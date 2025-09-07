@@ -11,27 +11,27 @@ interface BenefitsProps {
 const benefitList: BenefitsProps[] = [
   {
     icon: "Blocks",
-    title: "Build Brand Trust",
+    title: "Evaluación inicial",
     description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. A odio velit cum aliquam. Natus consectetur dolores.",
+      "mide tres movimientos con la cámara o un autorreporte simple..",
   },
   {
     icon: "LineChart",
-    title: "More Leads",
+    title: " Rutina diaria (12 min)",
     description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. A odio velit cum aliquam, natus consectetur.",
+      "ejercicios guiados, pausas y contador automático.",
   },
   {
     icon: "Wallet",
-    title: "Higher Conversions",
+    title: "Seguimiento",
     description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Natus consectetur. A odio velit cum aliquam",
+      "recordatorios, rachas semanales y alertas si hay fatiga o dolor.",
   },
   {
     icon: "Sparkle",
-    title: "Test Marketing Ideas",
+    title: "Acompañamiento",
     description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. A odio velit cum aliquam. Natus consectetur dolores.",
+      "comparte un video breve y recibe comentarios de un profesional aliado.",
   },
 ];
 
@@ -40,15 +40,13 @@ export const BenefitsSection = () => {
     <section id="benefits" className="container py-24 sm:py-32">
       <div className="grid lg:grid-cols-2 place-items-center lg:gap-24">
         <div>
-          <h2 className="text-lg text-primary mb-2 tracking-wider">Benefits</h2>
+          <h2 className="text-lg text-primary mb-2 tracking-wider">Paralisis Facial Parcial</h2>
 
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Your Shortcut to Success
+            ¿Por qué cuesta mantenerse constante?
           </h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Lorem ipsum dolor sit amet consectetur, adipisicing elit. Non
-            ducimus reprehenderit architecto rerum similique facere odit
-            deleniti necessitatibus quo quae.
+            La parálisis facial parcial afecta funciones cotidianas como parpadear, sonreír o comer. La terapia ayuda, pero es difícil medir avances y sostener una rutina.
           </p>
         </div>
 

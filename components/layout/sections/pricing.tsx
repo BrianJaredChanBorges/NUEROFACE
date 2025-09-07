@@ -25,48 +25,49 @@ interface PlanProps {
 
 const plans: PlanProps[] = [
   {
-    title: "Free",
+    title: "Gratis",
     popular: 0,
     price: 0,
     description:
-      "Lorem ipsum dolor sit, amet ipsum consectetur adipisicing elit.",
-    buttonText: "Start Free Trial",
+      "Si tienes preguntas, este es el primer paso",
+    buttonText: "Dame mi accesso",
     benefitList: [
-      "1 team member",
-      "1 GB storage",
-      "Upto 2 pages",
-      "Community support",
-      "AI assistance",
+      "1 usuario",
+      "Evaluación",
+      "primer micro-plan",
+      "Acceso a nuestra comunidad",
+      "Asistencia Remota",
     ],
   },
   {
-    title: "Premium",
+    title: "Care+",
     popular: 1,
-    price: 45,
+    price: 350,
     description:
-      "Lorem ipsum dolor sit, amet ipsum consectetur adipisicing elit.",
-    buttonText: "Get starterd",
+      "Toma el Control de tu progreso",
+    buttonText: "Lo quiero",
     benefitList: [
-      "4 team member",
-      "8 GB storage",
-      "Upto 6 pages",
-      "Priority support",
-      "AI assistance",
+      "4 Usuarios",
+      "Sesiones guiadas",
+      "Mirror Coach",
+      "Reportes mensuales",
+      "mas todo lo de el plan gratuito",
     ],
   },
   {
     title: "Enterprise",
     popular: 0,
-    price: 120,
+    price: 500,
     description:
-      "Lorem ipsum dolor sit, amet ipsum consectetur adipisicing elit.",
-    buttonText: "Contact US",
+      "Equipa tu consultorio",
+    buttonText: "contactanos",
     benefitList: [
-      "10 team member",
-      "20 GB storage",
-      "Upto 10 pages",
-      "Phone & email support",
-      "AI assistance",
+      "BlinkGuard",
+      "Acceso a bolsa de trabajo",
+      "Posicionamiento de tu clinica",
+      "Soporte por email o telefono",
+      "Acceso a metricas faciales impulsadas por IA",
+      "CRM para el control de pacientes",
     ],
   },
 ];
@@ -75,15 +76,15 @@ export const PricingSection = () => {
   return (
     <section className="container py-24 sm:py-32">
       <h2 className="text-lg text-primary text-center mb-2 tracking-wider">
-        Pricing
+        Precios
       </h2>
 
       <h2 className="text-3xl md:text-4xl text-center font-bold mb-4">
-        Get unlimitted access
+        Obten acceso ilimitado
       </h2>
 
       <h3 className="md:w-1/2 mx-auto text-xl text-center text-muted-foreground pb-14">
-        Lorem ipsum dolor sit amet consectetur adipisicing reiciendis.
+        si cumples el 80%  de tu programa y no hay mejora, te damos 2 semanas Pro sin costo.
       </h3>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-4">

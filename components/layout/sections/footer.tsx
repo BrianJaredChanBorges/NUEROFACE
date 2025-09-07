@@ -11,12 +11,12 @@ export const FooterSection = () => {
             <Link href="#" className="flex font-bold items-center">
               <ChevronsDownIcon className="w-9 h-9 mr-2 bg-gradient-to-tr from-primary via-primary/70 to-primary rounded-lg border border-secondary" />
 
-              <h3 className="text-2xl">Shadcn</h3>
+              <h3 className="text-2xl">BTRACK</h3>
             </Link>
           </div>
 
           <div className="flex flex-col gap-2">
-            <h3 className="font-bold text-lg">Contact</h3>
+            <h3 className="font-bold text-lg">Contacto</h3>
             <div>
               <Link href="#" className="opacity-60 hover:opacity-100">
                 Github
@@ -37,7 +37,7 @@ export const FooterSection = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <h3 className="font-bold text-lg">Platforms</h3>
+            <h3 className="font-bold text-lg">Plataformas</h3>
             <div>
               <Link href="#" className="opacity-60 hover:opacity-100">
                 iOS
@@ -58,7 +58,7 @@ export const FooterSection = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <h3 className="font-bold text-lg">Help</h3>
+            <h3 className="font-bold text-lg">Ayuda</h3>
             <div>
               <Link href="#" className="opacity-60 hover:opacity-100">
                 Contact Us
@@ -79,7 +79,7 @@ export const FooterSection = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <h3 className="font-bold text-lg">Socials</h3>
+            <h3 className="font-bold text-lg">Social</h3>
             <div>
               <Link href="#" className="opacity-60 hover:opacity-100">
                 Twitch
@@ -103,13 +103,13 @@ export const FooterSection = () => {
         <Separator className="my-6" />
         <section className="">
           <h3 className="">
-            &copy; 2024 Designed and developed by
+            &copy; 2025 Diseñado y desarrollado por 
             <Link
               target="_blank"
-              href="https://github.com/leoMirandaa"
+              href=""
               className="text-primary transition-all border-primary hover:border-b-2 ml-1"
             >
-              Leo Miranda
+              BIONET Team
             </Link>
           </h3>
         </section>

@@ -11,39 +11,39 @@ interface FeaturesProps {
 const featureList: FeaturesProps[] = [
   {
     icon: "TabletSmartphone",
-    title: "Mobile Friendly",
+    title: "BlinkGuard",
     description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. A odio velit cum aliquam, consectetur.",
+      "Recordatorios inteligentes para proteger el ojo.",
   },
   {
     icon: "BadgeCheck",
-    title: "Social Proof",
+    title: "Sesiones cortas",
     description:
-      "Lorem ipsum dolor sit amet consectetur. Natus consectetur, odio ea accusamus aperiam.",
+      "Sesiones efectivas de 10–15 min con recordatorios para no perder el ritmo.",
   },
   {
     icon: "Goal",
-    title: "Targeted Content",
+    title: "Progreso visible",
     description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. odio ea accusamus aperiam.",
+      "score y antes/ahora",
   },
   {
     icon: "PictureInPicture",
-    title: "Strong Visuals",
+    title: "Me preocupa hacerme daño",
     description:
-      "Lorem elit. A odio velit cum aliquam. Natus consectetur dolores, odio ea accusamus aperiam.",
+      "Límites diarios y alertas si aparece dolor o fatiga; progreso seguro.",
   },
   {
     icon: "MousePointerClick",
-    title: "Clear CTA",
+    title: "Quiero apoyo real",
     description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing. odio ea accusamus consectetur.",
+      "Sube un breve video y obtén comentarios asíncronos de un especialista.",
   },
   {
     icon: "Newspaper",
-    title: "Clear Headline",
+    title: "Privacidad",
     description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. A odio velit cum aliquam. Natus consectetur.",
+      "Datos mínimos y cifrado extremo a extremo.",
   },
 ];
 
@@ -51,17 +51,15 @@ export const FeaturesSection = () => {
   return (
     <section id="features" className="container py-24 sm:py-32">
       <h2 className="text-lg text-primary text-center mb-2 tracking-wider">
-        Features
+        Caracteristicas
       </h2>
 
       <h2 className="text-3xl md:text-4xl text-center font-bold mb-4">
-        What Makes Us Different
+        Cada día cuenta: empieza tu recuperación hoy
       </h2>
 
       <h3 className="md:w-1/2 mx-auto text-xl text-center text-muted-foreground mb-8">
-        Lorem ipsum dolor, sit amet consectetur adipisicing elit. Voluptatem
-        fugiat, odit similique quasi sint reiciendis quidem iure veritatis optio
-        facere tenetur.
+       Plan claro, guía diaria y seguimiento objetivo desde casa. No sustituye una consulta médica.
       </h3>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

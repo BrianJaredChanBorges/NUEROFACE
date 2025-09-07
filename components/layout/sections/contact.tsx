@@ -63,14 +63,14 @@ export const ContactSection = () => {
         <div>
           <div className="mb-4">
             <h2 className="text-lg text-primary mb-2 tracking-wider">
-              Contact
+              Contacto
             </h2>
 
-            <h2 className="text-3xl md:text-4xl font-bold">Connect With Us</h2>
+            <h2 className="text-3xl md:text-4xl font-bold">Conecta con nosotros</h2>
           </div>
           <p className="mb-8 text-muted-foreground lg:w-5/6">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptatum
-            ipsam sint enim exercitationem ex autem corrupti quas tenetur
+            Estamos encantados de conocerte, si estas interesado en cotizaciones o tienes preguntas sobre nuestros servicios
+            estaremos encatados de escuchar tu historia
           </p>
 
           <div className="flex flex-col gap-4">
@@ -80,16 +80,16 @@ export const ContactSection = () => {
                 <div className="font-bold">Find us</div>
               </div>
 
-              <div>742 Evergreen Terrace, Springfield, IL 62704</div>
+              <div>Cancun, Quintana Roo. Instituto Tecnologico de Cancun</div>
             </div>
 
             <div>
               <div className="flex gap-2 mb-1">
                 <Phone />
-                <div className="font-bold">Call us</div>
+                <div className="font-bold">Llamanos</div>
               </div>
 
-              <div>+1 (619) 123-4567</div>
+              <div>+52 998 105 6673</div>
             </div>
 
             <div>
@@ -98,13 +98,13 @@ export const ContactSection = () => {
                 <div className="font-bold">Mail US</div>
               </div>
 
-              <div>leomirandadev@gmail.com</div>
+              <div>contactobrianchan@gmail.com</div>
             </div>
 
             <div>
               <div className="flex gap-2">
                 <Clock />
-                <div className="font-bold">Visit us</div>
+                <div className="font-bold">visitanos</div>
               </div>
 
               <div>
@@ -129,7 +129,7 @@ export const ContactSection = () => {
                     name="firstName"
                     render={({ field }) => (
                       <FormItem className="w-full">
-                        <FormLabel>First Name</FormLabel>
+                        <FormLabel>Nombre</FormLabel>
                         <FormControl>
                           <Input placeholder="Leopoldo" {...field} />
                         </FormControl>
@@ -142,7 +142,7 @@ export const ContactSection = () => {
                     name="lastName"
                     render={({ field }) => (
                       <FormItem className="w-full">
-                        <FormLabel>Last Name</FormLabel>
+                        <FormLabel>Apellido</FormLabel>
                         <FormControl>
                           <Input placeholder="Miranda" {...field} />
                         </FormControl>
@@ -178,7 +178,7 @@ export const ContactSection = () => {
                     name="subject"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Subject</FormLabel>
+                        <FormLabel>Categoria</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           defaultValue={field.value}
@@ -190,17 +190,17 @@ export const ContactSection = () => {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="Web Development">
-                              Web Development
+                              Cotizaciones
                             </SelectItem>
                             <SelectItem value="Mobile Development">
-                              Mobile Development
+                              Testimonios
                             </SelectItem>
                             <SelectItem value="Figma Design">
-                              Figma Design
+                              Inversionistas
                             </SelectItem>
                             <SelectItem value="REST API">REST API</SelectItem>
                             <SelectItem value="FullStack Project">
-                              FullStack Project
+                              Recomendaciones
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -216,7 +216,7 @@ export const ContactSection = () => {
                     name="message"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Message</FormLabel>
+                        <FormLabel>Mensaje</FormLabel>
                         <FormControl>
                           <Textarea
                             rows={5}
@@ -232,7 +232,7 @@ export const ContactSection = () => {
                   />
                 </div>
 
-                <Button className="mt-4">Send message</Button>
+                <Button className="mt-4">Enviar Mensaje</Button>
               </form>
             </Form>
           </CardContent>
