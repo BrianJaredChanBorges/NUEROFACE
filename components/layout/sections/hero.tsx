@@ -45,10 +45,10 @@ export const HeroSection = () => {
               className="w-5/6 md:w-1/4 font-bold"
             >
               <Link
-                href=""
+                href="/simetry"
                 target="_blank"
               >
-                Ver cómo funciona
+                click aqui
               </Link>
             </Button>
           </div>

@@ -1,8 +1,8 @@
 "use client";
 
 import { Icon } from "@/components/ui/icon";
-import { Marquee } from "@devnomic/marquee";
-import "@devnomic/marquee/dist/index.css";
+import Marquee from "@/components/ui/marquee";
+ 
 import { icons } from "lucide-react";
 interface sponsorsProps {
   icon: string;
@@ -12,31 +12,31 @@ interface sponsorsProps {
 const sponsors: sponsorsProps[] = [
   {
     icon: "Crown",
-    name: "Acmebrand",
+    name: "IT CANCUN",
   },
   {
     icon: "Vegan",
-    name: "Acmelogo",
+    name:"INSTITUTO TECNOLOGICO DE CANCUN",
   },
   {
     icon: "Ghost",
-    name: "Acmesponsor",
+    name: "INNOVATEC",
   },
   {
     icon: "Puzzle",
-    name: "Acmeipsum",
+    name: "TECNM CANCUN",
   },
   {
     icon: "Squirrel",
-    name: "Acme",
+    name: "TUCAN CANCUN",
   },
   {
     icon: "Cookie",
-    name: "Accmee",
+    name: "TECNOLOGICO DE CANCUN",
   },
   {
     icon: "Drama",
-    name: "Acmetech",
+    name: "CERTAMEN DE PROYECTOS INNOVATEC",
   },
 ];
 

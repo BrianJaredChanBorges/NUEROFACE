@@ -52,7 +52,7 @@ const reviewList: ReviewProps[] = [
   },
   {
     image: "https://github.com/shadcn.png",
-    name: "Agustin Ceferino",
+    name: "Reyna",
     userName: "Supervisor de Finanzas",
     comment:
       "Volví a reuniones sin cansancio en el ojo.",
@@ -60,7 +60,7 @@ const reviewList: ReviewProps[] = [
   },
   {
     image: "https://github.com/shadcn.png",
-    name: "Oscar Ortiz",
+    name: "Ortiz",
     userName: "Analista de ciberseguridad",
     comment:
       "Las rachas me ayudaron a no abandonar.” ",
@@ -69,7 +69,7 @@ const reviewList: ReviewProps[] = [
 
   {
     image: "https://github.com/shadcn.png",
-    name: "Maria Al",
+    name: "Tania",
     userName: "Maestra",
     comment:
       "“Mi neurólogo entendió mi progreso",
