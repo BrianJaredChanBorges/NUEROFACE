@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
 const BUCKET = process.env.NEXT_PUBLIC_SUPABASE_BUCKET || "uploads";
 const TABLE = process.env.NEXT_PUBLIC_SUPABASE_IMAGES_TABLE || "images";
 
