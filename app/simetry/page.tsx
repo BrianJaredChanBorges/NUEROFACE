@@ -1,4 +1,4 @@
-import * as React from "react";
+/*import * as React from "react";
 import ClientOnlyUpload from "./ClientOnlyUpload";
 import { HeroSection } from "./heroS";
 
@@ -14,5 +14,24 @@ export default function SimetryPage() {
       </section>
       <HeroSection />
     </>
+  );
+}
+*/
+// app/simetry/page.tsx
+// app/simetry/page.tsx
+"use client";
+
+import React from "react";
+import FaceAnalyzer from "./components/FaceAnalyzer";
+import { HeroSection } from "./heroS"; // o la ruta real donde tengas HeroSection
+
+export default function SimetryPage() {
+  return (
+    <main className="p-6">
+      <HeroSection />
+      <section className="my-8 max-w-4xl mx-auto">
+        <FaceAnalyzer />
+      </section>
+    </main>
   );
 }
