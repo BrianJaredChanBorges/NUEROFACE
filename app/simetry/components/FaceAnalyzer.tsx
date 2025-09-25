@@ -4,6 +4,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Uploader, { UploaderProps } from "./Uploader";
 
+
 type Landmark = { x: number; y: number; z?: number };
 type Scores = { global: number; eyes: number; mouth: number; jaw: number; framesProcessed?: number };
 
@@ -24,7 +25,7 @@ export default function FaceAnalyzer() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const WASM_ROOT = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm";
-  const MODEL_PATH = "components/models/face_landmarker.task"; 
+  const MODEL_PATH = "models/face_landmarker.task"; 
 
   useEffect(() => {
     (async () => {
