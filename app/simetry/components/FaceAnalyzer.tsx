@@ -71,15 +71,31 @@ export default function FaceAnalyzer() {
       }
     })();
 
-    return () => {
-      stopCamera();
-      if (landmarkerRef.current?.close) {
+      return () => {
+      // cleanup asíncrono seguro
+      (async () => {
         try {
-          landmarkerRef.current.close();
-        } catch {}
-      }
-      landmarkerRef.current = null;
+          // detener cámara (sincrónico)
+          stopCamera();
+
+          // si existe la instancia, intenta cerrarla de forma asíncrona y esperar a que termine
+          if (landmarkerRef.current) {
+            // algunos builds exponen close() como async, otros no; await funciona con ambos.
+            try {
+              await landmarkerRef.current.close?.();
+            } catch (closeErr) {
+              console.warn("Warning: error al cerrar faceLandmarker:", closeErr);
+            }
+          }
+        } catch (err) {
+          console.warn("Error en cleanup de FaceAnalyzer:", err);
+        } finally {
+          // limpiar referencia
+          landmarkerRef.current = null;
+        }
+      })();
     };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -178,31 +194,69 @@ export default function FaceAnalyzer() {
     }
   }
 
-  async function handleFiles(files: File[]) {
-    if (!files || !files.length || !landmarkerRef.current) return;
-    setProcessing(true);
+  // Reemplaza la función handleFiles existente por esta
+async function handleFiles(files: File[]) {
+  if (!files || !files.length || !landmarkerRef.current) return;
+  setProcessing(true);
+
+  // recordamos si la webcam estaba corriendo para restaurarla luego
+  const wasWebcamRunning = webcamRunning;
+
+  try {
+    // Si la webcam estaba activa, detenla temporalmente para evitar conflictos
+    if (wasWebcamRunning) {
+      stopCamera();
+      setWebcamRunning(false);
+    }
+
+    // Cambiar el modo a IMAGE para poder usar detect()
+    if (landmarkerRef.current.setOptions) {
+      try {
+        await landmarkerRef.current.setOptions({ runningMode: "IMAGE" });
+      } catch (err) {
+        console.warn("No se pudo setOptions to IMAGE, intentando continuar:", err);
+      }
+    }
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const img = await fileToImage(file);
+
+      // ahora detect() en modo IMAGE
+      const res = await landmarkerRef.current.detect(img);
+      if (res?.faceLandmarks?.[0]) {
+        drawStaticImageWithLandmarks(img, res.faceLandmarks[0]);
+        const pts = normalizeLandmarks2D(res.faceLandmarks[0], img.width, img.height);
+        const sc: Scores = computeAsymmetryScores(pts.flat());
+        sc.framesProcessed = 1;
+        setScores(sc);
+      } else {
+        clearCanvas();
+        setScores(null);
+      }
+    }
+  } catch (err) {
+    console.error("Error procesando imagen:", err);
+  } finally {
+    // Restaurar modo a VIDEO si es posible (y reanudar cámara si estaba antes)
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const img = await fileToImage(file);
-        const res = await landmarkerRef.current.detect(img);
-        if (res?.faceLandmarks?.[0]) {
-          drawStaticImageWithLandmarks(img, res.faceLandmarks[0]);
-          const pts = normalizeLandmarks2D(res.faceLandmarks[0], img.width, img.height);
-          const sc: Scores = computeAsymmetryScores(pts.flat());
-          sc.framesProcessed = 1;
-          setScores(sc);
-        } else {
-          clearCanvas();
-          setScores(null);
-        }
+      if (landmarkerRef.current?.setOptions) {
+        await landmarkerRef.current.setOptions({ runningMode: "VIDEO" });
       }
     } catch (err) {
-      console.error("Error procesando imagen:", err);
-    } finally {
-      setProcessing(false);
+      console.warn("No se pudo setOptions to VIDEO:", err);
     }
+
+    if (wasWebcamRunning) {
+      // re-iniciar cámara y loop
+      await enableCam();
+      // enableCam ya pone webcamRunning true y arranca predictWebcam
+    }
+
+    setProcessing(false);
   }
+}
+
 
   function drawPoints(landmarks: Landmark[]) {
     const canvas = canvasRef.current;
