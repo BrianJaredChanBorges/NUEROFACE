@@ -7,12 +7,23 @@ import Uploader, { UploaderProps } from "./Uploader";
 
 type Landmark = { x: number; y: number; z?: number };
 type Scores = { global: number; eyes: number; mouth: number; jaw: number; framesProcessed?: number };
+// 1) En la definición del componente, añade las props:
+type FaceAnalyzerProps = {
+  className?: string;
+  autoStart?: boolean;           // <--- NUEVO
+  onReady?: () => void;          // <--- NUEVO (opcional)
+};
 
 let FilesetResolver: any = null;
 let FaceLandmarkerClass: any = null;
 let DrawingUtilsClass: any = null;
 
-export default function FaceAnalyzer() {
+
+export default function FaceAnalyzer({
+  className,
+  autoStart = false,
+  onReady,
+}: FaceAnalyzerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
@@ -47,6 +58,10 @@ export default function FaceAnalyzer() {
             );
           }
         }
+
+        // 2) En el useEffect donde inicializas la cámara, añade el auto-start.
+// Si no tienes ese efecto, crea este (sin duplicar inicializaciones):
+
 
         const fileset = await FilesetResolver.forVisionTasks(WASM_ROOT);
 
