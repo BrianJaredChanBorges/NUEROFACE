@@ -23,81 +23,61 @@ interface SocialNetworkProps {
 }
 export const TeamSection = () => {
   const teamList: TeamProps[] = [
-    {
-      imageUrl: "https://i.pravatar.cc/250?img=58",
-      firstName: "Brian",
-      lastName: "Chan",
-      positions: ["Ing. Sistemas computacionales", "Vue Fronted Developer", "Creator Of This Website"],
-      socialNetworks: [
-        {
-          name: "LinkedIn",
-          url: "",
-        },
-        {
-          name: "Github",
-          url: "",
-        },
-        {
-          name: "X",
-          url: "",
-        },
-      ],
-    },
-    {
-      imageUrl:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1528&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      firstName: "Hashira",
-      lastName: "Cruz",
-      positions: ["Ing. Sistemas computacionales", "UI/UX Designer"],
-      socialNetworks: [
-        {
-          name: "LinkedIn",
-          url: "",
-        },
-        {
-          name: "X",
-          url: "",
-        },
-      ],
-    },
-    {
-      imageUrl:
-        "https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=1760&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      firstName: "Geovanny",
-      lastName: "de la Cruz",
-      positions: [ "Ing. Sistemas computacionales", "Machine Learning Engineer", "TensorFlow Tinkerer"],
-      socialNetworks: [
-        {
-          name: "LinkedIn",
-          url: "",
-        },
-        {
-          name: "Github",
-          url: "",
-        },
-      ],
-    },
-    {
-      imageUrl:
-        "https://images.unsplash.com/photo-1573497161161-c3e73707e25c?q=80&w=1587&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      firstName: "Pedro",
-      lastName: "Robinson",
-      positions: ["Ing. Mecatronica","Cloud Native Developer", " Kubernetes Orchestrator"],
-      socialNetworks: [
-        {
-          name: "LinkedIn",
-          url: "",
-        },
-        {
-          name: "Github",
-          url: "",
-        },
-        {
-          name: "X",
-          url: "",
-        },
-      ],
-    },
+  {
+    imageUrl: "/team/Brian.jpg",
+    firstName: "Brian",
+    lastName: "Chan",
+    positions: [
+      "Ing. Sistemas computacionales",
+      "Vue Fronted Developer",
+      "Creator Of This Website",
+    ],
+    socialNetworks: [
+      { name: "LinkedIn", url: "" },
+      { name: "Github", url: "" },
+      { name: "X", url: "" },
+    ],
+  },
+  {
+    imageUrl: "/team/Hashira.jpg",
+    firstName: "Hashira",
+    lastName: "Cruz",
+    positions: ["Ing. Sistemas computacionales", "UI/UX Designer"],
+    socialNetworks: [
+      { name: "LinkedIn", url: "" },
+      { name: "X", url: "" },
+    ],
+  },
+  {
+    imageUrl: "/team/Geovanny.jpg",
+    firstName: "Geovanny",
+    lastName: "de la Cruz",
+    positions: [
+      "Ing. Sistemas computacionales",
+      "Machine Learning Engineer",
+      "TensorFlow Tinkerer",
+    ],
+    socialNetworks: [
+      { name: "LinkedIn", url: "" },
+      { name: "Github", url: "" },
+    ],
+  },
+  {
+    imageUrl: "/team/Pedro.jpg",
+    firstName: "Pedro",
+    lastName: "Robinson",
+    positions: [
+      "Ing. Mecatronica",
+      "Cloud Native Developer",
+      "Kubernetes Orchestrator",
+    ],
+    socialNetworks: [
+      { name: "LinkedIn", url: "" },
+      { name: "Github", url: "" },
+      { name: "X", url: "" },
+    ],
+  },
+
 /*
     
     {
