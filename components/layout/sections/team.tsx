@@ -30,7 +30,7 @@ export const TeamSection = () => {
     positions: [
       "Ing. Sistemas computacionales",
       "Vue Fronted Developer",
-      "Creator Of This Website",
+      "Creador de este sitio web",
     ],
     socialNetworks: [
       { name: "LinkedIn", url: "" },
