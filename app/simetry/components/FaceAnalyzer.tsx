@@ -657,7 +657,7 @@ setScores({
         />
 
         <div className="ml-auto text-sm">
-          {loadError ? <span className="text-red-500">{loadError}</span> : ready ? "Modelo listo" : "Cargando modelo..."}
+          {loadError ? <span className="text-red-500">{loadError}</span> : ready ? "Todo listo para ayudarte" : "Cargando modelo..."}
         </div>
       </div>
 
