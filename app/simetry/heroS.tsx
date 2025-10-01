@@ -39,14 +39,15 @@ export const HeroSection = () => {
               <ArrowRight className="size-5 ml-2 group-hover/arrow:translate-x-1 transition-transform" />
             </Button>
 
-<Button asChild className="w-5/6 md:w-1/4 font-bold">
-  <Link href="/simetry/video" target="_blank" rel="noopener noreferrer">
-    Analizar un video
-  </Link>
-</Button>
+
           </div>
         </div>
       </div>
     </section>
   );
 };
+/*<Button asChild className="w-5/6 md:w-1/4 font-bold">
+  <Link href="/simetry/video" target="_blank" rel="noopener noreferrer">
+    Analizar un video
+  </Link>
+</Button>*/

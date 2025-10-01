@@ -12,10 +12,26 @@ type Scores = {
   mouth: number;
   jaw: number;
   framesProcessed?: number;
-  meta?: {
-    rollDeg: number;   // grados de inclinación detectados
-    rollOk: boolean;   // true si |roll| <= 5°
-  };
+  meta?: { rollDeg: number; rollOk: boolean };
+  clinical?: ClinicalMetrics;     // 👈 NUEVO
+};
+
+type ClinicalMetrics = {
+  // Ojos
+  eyesApertL: number;
+  eyesApertR: number;
+  eyesApertDiff: number;    // |L - R|  (0..1 en coords normalizadas)
+  // Boca
+  mouthAngleDeg: number;    // ángulo de la línea de comisuras
+  mouthVertDiff: number;    // |yL - yR| / ref
+  dentalProxy: number;      // (ancho boca * apertura) / ref^2
+  smileLikely: boolean;
+  // Cejas
+  browEyeDistL: number;     // distancia vertical ceja-ojo / ref
+  browEyeDistR: number;
+  browAsym: number;         // |L - R|
+  // Eje medio (para overlay)
+  midX: number;
 };
 
 // 1) En la definición del componente, añade las props:
@@ -48,6 +64,7 @@ const IDX = {
   noseBaseL: 98,     // ala nasal izq
   noseBaseR: 327,    // ala nasal der
 };
+ 
 
 // Utilidades geométricas
 const v = {
@@ -98,52 +115,73 @@ function pairScore(a: XYZ, b: XYZ, midX: number, ref: number) {
 
 // Calcula puntajes por zona + global (simple y estable)
 export function computeSymmetryEnhanced(landmarks: XYZ[]) {
-  // 1) Quitar roll (inclinación) con la línea de ojos
+  // 1) Quitar roll con la línea de ojos
   const { corrected, rollDeg } = deroll(landmarks);
 
   // Referencias y eje medio
   const L = P(corrected, IDX.eyeOuterL);
   const R = P(corrected, IDX.eyeOuterR);
   const mid = v.mid(L, R);
-  const ref = Math.max(0.04, v.len(v.sub(R, L))); // distancia interpupilar (coords normalizadas 0..1)
+  const ref = Math.max(0.04, v.len(v.sub(R, L))); // interpupilar (0..1)
 
-  // --- Simetría "en X" (como antes) ---
+  // --- Simetría horizontal (X) como base ---
   const eyesX  = pairScore(P(corrected, IDX.eyeInnerL),  P(corrected, IDX.eyeInnerR),  mid.x, ref);
   const mouthX = pairScore(P(corrected, IDX.mouthCornerL), P(corrected, IDX.mouthCornerR), mid.x, ref);
   const jawX   = pairScore(P(corrected, IDX.jawL),         P(corrected, IDX.jawR),        mid.x, ref);
   const noseX  = pairScore(P(corrected, IDX.noseBaseL),    P(corrected, IDX.noseBaseR),   mid.x, ref);
 
-  // --- NUEVOS cues anti-sesgo (vertical/ángulo) ---
+  // --- Métricas clínicas anti-sesgo ---
   // Apertura de ojos (párpado inferior - superior)
-  const LE_up = P(corrected, 159), LE_down = P(corrected, 145); // ojo izq
-  const RE_up = P(corrected, 386), RE_down = P(corrected, 374); // ojo der
+  const LE_up = P(corrected, 159), LE_down = P(corrected, 145);
+  const RE_up = P(corrected, 386), RE_down = P(corrected, 374);
   const aperL = Math.max(LE_down.y - LE_up.y, 0);
   const aperR = Math.max(RE_down.y - RE_up.y, 0);
-  const ratioDiff = Math.abs(aperL - aperR) / Math.max(Math.max(aperL, aperR), 1e-6);
-  const eyesApert = 100 * (1 - Math.min(ratioDiff, 1)); // 100 = aperturas iguales
+  const aperDiff = Math.abs(aperL - aperR);
+  const aperRatioDiff = aperDiff / Math.max(Math.max(aperL, aperR), 1e-6);
+  const eyesApertScore = 100 * (1 - Math.min(aperRatioDiff, 1));
 
-  // Desnivel vertical entre comisuras de la boca
+  // Boca: desnivel vertical y ángulo
   const mouthL = P(corrected, IDX.mouthCornerL);
   const mouthR = P(corrected, IDX.mouthCornerR);
-  const mouthVertDiff = Math.abs(mouthL.y - mouthR.y);
-  const mouthVert = 100 * (1 - Math.min(mouthVertDiff / ref, 1)); // 100 = misma altura
-
-  // Ángulo de la línea de la boca (0° ideal tras deroll)
+  const mouthVertDiff = Math.abs(mouthL.y - mouthR.y) / ref;     // normalizado
+  const mouthVertScore = 100 * (1 - Math.min(mouthVertDiff, 1));
   const angDeg = Math.abs((Math.atan2(mouthR.y - mouthL.y, mouthR.x - mouthL.x) * 180) / Math.PI);
-  const angleLimit = 12; // a 12° penalización completa
-  const mouthAngle = 100 * (1 - Math.min(angDeg / angleLimit, 1));
+  const angleLimit = 12;
+  const mouthAngleScore = 100 * (1 - Math.min(angDeg / angleLimit, 1));
+
+  // Proxy área dental (sonrisa): ancho boca * apertura (labio sup 13, inf 14)
+  const upperLip = P(corrected, 13), lowerLip = P(corrected, 14);
+  const mouthOpen = Math.max(lowerLip.y - upperLip.y, 0);
+  const mouthWidth = Math.max(v.len(v.sub(mouthR, mouthL)), 1e-6);
+  const dentalProxy = (mouthWidth * mouthOpen) / (ref * ref); // 0..~>1
+  const smileLikely = dentalProxy > 0.25; // umbral empírico (ajustable)
+
+  // Cejas: ápices aprox 105 (izq) y 334 (der); centro de ojo = media de 4 puntos
+  const mean = (idxs: number[]) => {
+    const pts = idxs.map((i) => P(corrected, i));
+    return { x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length };
+  };
+  const eyeLC = mean([33, 133, 159, 145]);
+  const eyeRC = mean([362, 263, 386, 374]);
+  const browL = P(corrected, 105), browR = P(corrected, 334);
+  const browEyeDistL = Math.max(browL.y - eyeLC.y, 0) / ref;
+  const browEyeDistR = Math.max(browR.y - eyeRC.y, 0) / ref;
+  const browAsym = Math.abs(browEyeDistL - browEyeDistR);
 
   // --- Combinar por zonas ---
-  const eyesScore  = eyesX * 0.5 + eyesApert * 0.5;
-  const mouthScore = mouthX * 0.4 + mouthVert * 0.4 + mouthAngle * 0.2;
+  const eyesScore  = eyesX * 0.5 + eyesApertScore * 0.5;
+  // Si se detecta sonrisa, reducimos el peso del componente de boca vertical
+  const mouthVertWeight = smileLikely ? 0.2 : 0.4;
+  const mouthAngleWeight = smileLikely ? 0.1 : 0.2;
+  const mouthXWeight = 1 - mouthVertWeight - mouthAngleWeight; // 0.7 u 0.4
+  const mouthScore = mouthX * mouthXWeight + mouthVertScore * mouthVertWeight + mouthAngleScore * mouthAngleWeight;
+
   const jawScore   = jawX;
   const noseScore  = noseX;
 
-  // --- Global con “ancla” en las señales críticas ---
+  // Global con anclaje en señales clínicas
   let global = eyesScore * 0.32 + mouthScore * 0.38 + jawScore * 0.18 + noseScore * 0.12;
-
-  // Evitar 99% con caída evidente: limita por las señales más débiles
-  const criticalMin = Math.min(eyesApert, mouthVert, mouthAngle);
+  const criticalMin = Math.min(eyesApertScore, mouthVertScore, mouthAngleScore);
   global = Math.min(global, criticalMin * 0.6 + global * 0.4);
 
   return {
@@ -153,6 +191,19 @@ export function computeSymmetryEnhanced(landmarks: XYZ[]) {
     jaw: +jawScore.toFixed(1),
     nose: +noseScore.toFixed(1),
     quality: { rollDeg: +rollDeg.toFixed(1), rollOk: Math.abs(rollDeg) <= 5 },
+    clinical: {
+      eyesApertL: +aperL.toFixed(4),
+      eyesApertR: +aperR.toFixed(4),
+      eyesApertDiff: +aperDiff.toFixed(4),
+      mouthAngleDeg: +angDeg.toFixed(1),
+      mouthVertDiff: +mouthVertDiff.toFixed(3),
+      dentalProxy: +dentalProxy.toFixed(3),
+      smileLikely,
+      browEyeDistL: +browEyeDistL.toFixed(3),
+      browEyeDistR: +browEyeDistR.toFixed(3),
+      browAsym: +browAsym.toFixed(3),
+      midX: +mid.x.toFixed(4),
+    },
   };
 }
 
@@ -231,6 +282,9 @@ export default function FaceAnalyzer({
   autoStart = false,
   onReady,
 }: FaceAnalyzerProps) {
+  const [clinicalMode, setClinicalMode] = useState(false);
+ 
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
@@ -344,6 +398,98 @@ export default function FaceAnalyzer({
     }
   }
 
+  // --- Helpers de canvas para modo clínico ---
+function px(canvas: HTMLCanvasElement, nx: number) { return nx * canvas.width; }
+function py(canvas: HTMLCanvasElement, ny: number) { return ny * canvas.height; }
+
+/**
+ * Dibuja guías clínicas sobre el canvas:
+ * - Eje medio facial (rojo)
+ * - Línea de comisuras de la boca (naranja)
+ * - Aperturas de ambos ojos (azul)
+ * - Distancia ceja-ojo en ambos lados (morado)
+ * - Región dental aproximada (verde)
+ */
+function drawClinicalGuides(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  ls: Landmark[]
+) {
+  if (!ls?.length) return;
+
+  ctx.save();
+  ctx.lineWidth = 2;
+
+  // 1) Eje medio entre ojos externos (rojo)
+  const L = ls[33], R = ls[263];
+  if (L && R) {
+    const midx = (L.x + R.x) / 2;
+    ctx.strokeStyle = "rgba(255,80,80,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(px(canvas, midx), 0);
+    ctx.lineTo(px(canvas, midx), canvas.height);
+    ctx.stroke();
+  }
+
+  // 2) Línea de comisuras (naranja)
+  const ML = ls[61], MR = ls[291];
+  if (ML && MR) {
+    ctx.strokeStyle = "rgba(255,160,50,0.95)";
+    ctx.beginPath();
+    ctx.moveTo(px(canvas, ML.x), py(canvas, ML.y));
+    ctx.lineTo(px(canvas, MR.x), py(canvas, MR.y));
+    ctx.stroke();
+  }
+
+  // 3) Aperturas de ojos (azul)  (sup, inf): izq (159,145), der (386,374)
+  const pairs: Array<[number, number]> = [[159,145],[386,374]];
+  ctx.strokeStyle = "rgba(80,160,255,0.95)";
+  for (const [up, down] of pairs) {
+    const U = ls[up], D = ls[down];
+    if (U && D) {
+      ctx.beginPath();
+      ctx.moveTo(px(canvas, U.x), py(canvas, U.y));
+      ctx.lineTo(px(canvas, D.x), py(canvas, D.y));
+      ctx.stroke();
+    }
+  }
+
+  // 4) Distancia ceja-ojo (morado): ápices 105 (izq) y 334 (der)
+  const eyeLC = (ls[33] && ls[133] && ls[159] && ls[145])
+    ? { x:(ls[33].x+ls[133].x+ls[159].x+ls[145].x)/4, y:(ls[33].y+ls[133].y+ls[159].y+ls[145].y)/4 }
+    : null;
+  const eyeRC = (ls[362] && ls[263] && ls[386] && ls[374])
+    ? { x:(ls[362].x+ls[263].x+ls[386].x+ls[374].x)/4, y:(ls[362].y+ls[263].y+ls[386].y+ls[374].y)/4 }
+    : null;
+  const browL = ls[105], browR = ls[334];
+  ctx.strokeStyle = "rgba(180,90,255,0.9)";
+  if (browL && eyeLC) {
+    ctx.beginPath();
+    ctx.moveTo(px(canvas, browL.x), py(canvas, browL.y));
+    ctx.lineTo(px(canvas, eyeLC.x), py(canvas, eyeLC.y));
+    ctx.stroke();
+  }
+  if (browR && eyeRC) {
+    ctx.beginPath();
+    ctx.moveTo(px(canvas, browR.x), py(canvas, browR.y));
+    ctx.lineTo(px(canvas, eyeRC.x), py(canvas, eyeRC.y));
+    ctx.stroke();
+  }
+
+  // 5) Región dental aproximada (verde): rectángulo entre comisuras y labio sup/inf (13,14)
+  const upper = ls[13], lower = ls[14];
+  if (ML && MR && upper && lower) {
+    const x1 = px(canvas, Math.min(ML.x, MR.x));
+    const x2 = px(canvas, Math.max(ML.x, MR.x));
+    const y1 = py(canvas, upper.y);
+    const y2 = py(canvas, lower.y);
+    ctx.strokeStyle = "rgba(60,200,120,0.9)";
+    ctx.strokeRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1));
+  }
+
+  ctx.restore();
+}
+
   function stopCamera() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
@@ -375,25 +521,40 @@ export default function FaceAnalyzer({
         lastVideoTime = video.currentTime;
         const results = await landmarkerRef.current.detectForVideo(video, startTimeMs);
         if (results?.faceLandmarks?.length) {
-          if (DrawingUtilsClass) {
-            const ctx = canvas.getContext("2d")!;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const drawingUtils = new DrawingUtilsClass(ctx);
-            for (const landmarks of results.faceLandmarks) {
-              drawingUtils.drawConnectors(
-                landmarks,
-                FaceLandmarkerClass.FACE_LANDMARKS_TESSELATION,
-                { color: "#C0C0C070", lineWidth: 1 }
-              );
-              drawingUtils.drawConnectors(landmarks, FaceLandmarkerClass.FACE_LANDMARKS_RIGHT_EYE, { color: "#FF3030" });
-              drawingUtils.drawConnectors(landmarks, FaceLandmarkerClass.FACE_LANDMARKS_LEFT_EYE, { color: "#30FF30" });
-              drawingUtils.drawConnectors(landmarks, FaceLandmarkerClass.FACE_LANDMARKS_FACE_OVAL, { color: "#E0E0E0" });
-              drawingUtils.drawConnectors(landmarks, FaceLandmarkerClass.FACE_LANDMARKS_LIPS, { color: "#E0E0E0" });
-            }
-          } else {
-            drawPoints(results.faceLandmarks[0]);
-          }
+         if (DrawingUtilsClass) {
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const drawingUtils = new DrawingUtilsClass(ctx);
 
+  // Dibuja el mallado estándar
+  for (const landmarks of results.faceLandmarks) {
+    drawingUtils.drawConnectors(
+      landmarks,
+      FaceLandmarkerClass.FACE_LANDMARKS_TESSELATION,
+      { color: "#C0C0C070", lineWidth: 1 }
+    );
+    drawingUtils.drawConnectors(landmarks, FaceLandmarkerClass.FACE_LANDMARKS_RIGHT_EYE, { color: "#FF3030" });
+    drawingUtils.drawConnectors(landmarks, FaceLandmarkerClass.FACE_LANDMARKS_LEFT_EYE, { color: "#30FF30" });
+    drawingUtils.drawConnectors(landmarks, FaceLandmarkerClass.FACE_LANDMARKS_FACE_OVAL, { color: "#E0E0E0" });
+    drawingUtils.drawConnectors(landmarks, FaceLandmarkerClass.FACE_LANDMARKS_LIPS, { color: "#E0E0E0" });
+  }
+
+  // 👇 Ahora sí, AL FINAL, superponemos las guías clínicas sobre la primera cara
+  if (clinicalMode) {
+    const ctx2 = canvas.getContext("2d")!; // mismo contexto
+    drawClinicalGuides(ctx2, canvas, results.faceLandmarks[0] as any);
+  }
+} else {
+  // Fallback de puntos
+  drawPoints(results.faceLandmarks[0] as any);
+  // 👇 También aquí, para que el modo clínico funcione cuando no hay DrawingUtils
+  if (clinicalMode) {
+    const ctx = canvas.getContext("2d")!;
+    drawClinicalGuides(ctx, canvas, results.faceLandmarks[0] as any);
+  }
+}
+
+            
         // Cálculo mejorado directamente desde los landmarks (más preciso al corregir roll)
 const enh = computeSymmetryEnhanced(results.faceLandmarks[0] as any);
 
@@ -420,6 +581,7 @@ setScores((prev: any) => {
     } finally {
       if (webcamRunning) requestAnimationFrame(predictWebcam);
     }
+    
   }
 
   // Reemplaza la función handleFiles existente por esta
@@ -493,6 +655,84 @@ setScores({
 
 
   function drawPoints(landmarks: Landmark[]) {
+    function px(canvas: HTMLCanvasElement, nx: number) { return nx * canvas.width; }
+function py(canvas: HTMLCanvasElement, ny: number) { return ny * canvas.height; }
+
+function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, ls: Landmark[]) {
+  // Eje medio (entre ojos externos)
+  const L = ls[33], R = ls[263];
+  if (!L || !R) return;
+  const midx = (L.x + R.x) / 2;
+
+  ctx.save();
+  ctx.lineWidth = 2;
+
+  // 1) Eje medio (rojo)
+  ctx.strokeStyle = "rgba(255,80,80,0.9)";
+  ctx.beginPath();
+  ctx.moveTo(px(canvas, midx), 0);
+  ctx.lineTo(px(canvas, midx), canvas.height);
+  ctx.stroke();
+
+  // 2) Línea de boca (naranja)
+  const ML = ls[61], MR = ls[291];
+  if (ML && MR) {
+    ctx.strokeStyle = "rgba(255,160,50,0.95)";
+    ctx.beginPath();
+    ctx.moveTo(px(canvas, ML.x), py(canvas, ML.y));
+    ctx.lineTo(px(canvas, MR.x), py(canvas, MR.y));
+    ctx.stroke();
+  }
+
+  // 3) Aperturas de ojos (azul)
+  const pairs = [[159,145],[386,374]] as const; // (sup, inf) left/right
+  ctx.strokeStyle = "rgba(80,160,255,0.95)";
+  for (const [up, down] of pairs) {
+    const U = ls[up], D = ls[down];
+    if (U && D) {
+      ctx.beginPath();
+      ctx.moveTo(px(canvas, U.x), py(canvas, U.y));
+      ctx.lineTo(px(canvas, D.x), py(canvas, D.y));
+      ctx.stroke();
+    }
+  }
+
+  // 4) Cejas: línea vertical hasta centro de ojo (morado)
+  const browIdx = [105, 334]; // ápices aprox
+  const eyeCenters = [
+    [(33+133+159+145)/4, (33+133+159+145)/4], // solo marcador; no se usa directamente
+  ];
+  ctx.strokeStyle = "rgba(180,90,255,0.9)";
+  const eyeLC = { x:(ls[33].x+ls[133].x+ls[159].x+ls[145].x)/4, y:(ls[33].y+ls[133].y+ls[159].y+ls[145].y)/4 };
+  const eyeRC = { x:(ls[362].x+ls[263].x+ls[386].x+ls[374].x)/4, y:(ls[362].y+ls[263].y+ls[386].y+ls[374].y)/4 };
+  const browL = ls[105], browR = ls[334];
+  if (browL) {
+    ctx.beginPath();
+    ctx.moveTo(px(canvas, browL.x), py(canvas, browL.y));
+    ctx.lineTo(px(canvas, eyeLC.x), py(canvas, eyeLC.y));
+    ctx.stroke();
+  }
+  if (browR) {
+    ctx.beginPath();
+    ctx.moveTo(px(canvas, browR.x), py(canvas, browR.y));
+    ctx.lineTo(px(canvas, eyeRC.x), py(canvas, eyeRC.y));
+    ctx.stroke();
+  }
+
+  // 5) Región dental (verde): rectángulo aproximado
+  const upper = ls[13], lower = ls[14];
+  if (ML && MR && upper && lower) {
+    const x1 = px(canvas, Math.min(ML.x, MR.x));
+    const x2 = px(canvas, Math.max(ML.x, MR.x));
+    const y1 = py(canvas, upper.y);
+    const y2 = py(canvas, lower.y);
+    ctx.strokeStyle = "rgba(60,200,120,0.9)";
+    ctx.strokeRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1));
+  }
+
+  ctx.restore();
+}
+
     const canvas = canvasRef.current;
     const video = videoRef.current;
     if (!canvas || !video) return;
@@ -531,6 +771,10 @@ setScores({
       ctx.arc(x, y, 1.6, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      if (clinicalMode) {
+  drawClinicalGuides(ctx, canvas, landmarks as any);
+}
+
     }
   }
 
@@ -655,6 +899,12 @@ setScores({
             await handleFiles(files);
           }}
         />
+<button
+  onClick={() => setClinicalMode((v) => !v)}
+  className={`px-3 py-1 rounded border ${clinicalMode ? "bg-purple-600 text-white" : "bg-transparent text-purple-300"}`}
+>
+  {clinicalMode ? "Modo clínico: ON" : "Modo clínico: OFF"}
+</button>
 
         <div className="ml-auto text-sm">
           {loadError ? <span className="text-red-500">{loadError}</span> : ready ? "Todo listo para ayudarte" : "Cargando modelo..."}
@@ -694,6 +944,33 @@ setScores({
             );
           })()}
         </div>
+
+
+        {clinicalMode && scores?.clinical && (
+  <div className="md:col-span-2 rounded-xl border p-6 bg-card/60 mt-2">
+    <h4 className="font-semibold mb-3">Modo clínico</h4>
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+      <div><span className="text-muted-foreground">Apertura ojo izq:</span> {scores.clinical.eyesApertL}</div>
+      <div><span className="text-muted-foreground">Apertura ojo der:</span> {scores.clinical.eyesApertR}</div>
+      <div><span className="text-muted-foreground">Δ aperturas ojos:</span> {scores.clinical.eyesApertDiff}</div>
+
+      <div><span className="text-muted-foreground">Desnivel comisuras (norm):</span> {scores.clinical.mouthVertDiff}</div>
+      <div><span className="text-muted-foreground">Ángulo de boca:</span> {scores.clinical.mouthAngleDeg}°</div>
+
+      <div><span className="text-muted-foreground">Ceja-ojo izq (norm):</span> {scores.clinical.browEyeDistL}</div>
+      <div><span className="text-muted-foreground">Ceja-ojo der (norm):</span> {scores.clinical.browEyeDistR}</div>
+      <div><span className="text-muted-foreground">Asimetría cejas (norm):</span> {scores.clinical.browAsym}</div>
+
+      <div className={scores.clinical.smileLikely ? "text-emerald-400" : "text-muted-foreground"}>
+        Área dental (proxy): {scores.clinical.dentalProxy} {scores.clinical.smileLikely ? "— sonrisa detectada" : ""}
+      </div>
+    </div>
+    <p className="mt-3 text-xs text-muted-foreground">
+      * Valores “norm” están normalizados por la distancia interpupilar. Los trazos clínicos se dibujan sobre la imagen cuando el modo está activo.
+    </p>
+  </div>
+)}
+
         <p className="mt-4 text-xs text-muted-foreground">
           Frames analizados: {scores.framesProcessed ?? 0}
         </p>
