@@ -18,6 +18,74 @@ let FilesetResolver: any = null;
 let FaceLandmarkerClass: any = null;
 let DrawingUtilsClass: any = null;
 
+// ---------- UI helpers (solo presentación) ----------
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
+/** Cuenta hacia arriba de forma suave hasta "to" */
+function CountUp({ to, decimals = 0, duration = 900 }: { to: number; decimals?: number; duration?: number }) {
+  const [val, setVal] = React.useState(0);
+  React.useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const loop = () => {
+      const t = clamp01((performance.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      setVal(to * eased);
+      if (t < 1) raf = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => cancelAnimationFrame(raf);
+  }, [to, duration]);
+  return <>{val.toFixed(decimals)}</>;
+}
+
+/** Medidor circular con conic-gradient (0–100) */
+function GaugeRing({ value, size = 160 }: { value: number; size?: number }) {
+  const pct = clamp01(value / 100);
+  const angle = pct * 360;
+  const ring = {
+    background: `conic-gradient(hsl(var(--primary)) ${angle}deg, hsl(var(--muted)) ${angle}deg)`,
+    width: size,
+    height: size,
+  } as React.CSSProperties;
+
+  return (
+    <div className="relative grid place-items-center" style={{ width: size, height: size }}>
+      <div className="rounded-full" style={{ ...ring, borderRadius: "9999px" }} />
+      <div className="absolute rounded-full bg-background shadow-sm" style={{ width: size - 36, height: size - 36 }} />
+      <div className="absolute text-center">
+        <div className="text-4xl font-extrabold">
+          <CountUp to={value} decimals={1} />%
+        </div>
+        <div className="text-xs text-muted-foreground -mt-1">Índice global</div>
+      </div>
+    </div>
+  );
+}
+
+/** Barra horizontal animada (0–100) */
+function StatBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-medium">{value.toFixed(1)}</span>
+      </div>
+      <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-700"
+          style={{ width: `${clamp01(value / 100) * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function badgeFromScore(v: number) {
+  if (v >= 75) return { text: "Simetría alta", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" };
+  if (v >= 45) return { text: "Simetría media", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" };
+  return { text: "Simetría baja", cls: "bg-rose-500/15 text-rose-400 border-rose-500/30" };
+}
 
 export default function FaceAnalyzer({
   className,
@@ -447,22 +515,68 @@ async function handleFiles(files: File[]) {
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded pointer-events-none" />
       </div>
 
-      <div>
-        {processing ? <div>Procesando...</div> : null}
-        {scores ? (
-          <div className="text-sm">
-            <div>
-              <strong>Índice global:</strong> {scores.global.toFixed(1)}
-            </div>
-            <div>
-              Ojos: {scores.eyes.toFixed(1)} · Boca: {scores.mouth.toFixed(1)} · Mandíbula: {scores.jaw.toFixed(1)}
-            </div>
-            <div className="text-xs text-gray-500">Frames analizados: {scores.framesProcessed ?? 0}</div>
-          </div>
-        ) : (
-          <div className="text-sm text-gray-500">No se detecta rostro aún.</div>
-        )}
+      {/* ----- RESULTADOS VISUALES ----- */}
+<div className="relative">
+  {/* Overlay de procesamiento */}
+  {processing && (
+    <div className="absolute inset-0 z-10 grid place-items-center rounded-lg bg-background/70 backdrop-blur-sm">
+      <div className="flex items-center gap-2 text-sm">
+        <span className="size-2 animate-ping rounded-full bg-primary" />
+        Procesando imagen…
       </div>
+    </div>
+  )}
+
+  {scores ? (
+    <div className="grid gap-6 md:grid-cols-2">
+      {/* Tarjeta 1: Gauge + badge */}
+      <div className="rounded-xl border p-6 bg-card/60">
+        <div className="flex items-start justify-between">
+          <GaugeRing value={scores.global} />
+          {(() => {
+            const b = badgeFromScore(scores.global);
+            return (
+              <span className={`border px-2.5 py-1 rounded-full text-xs font-medium mt-2 ${b.cls}`}>
+                {b.text}
+              </span>
+            );
+          })()}
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Frames analizados: {scores.framesProcessed ?? 0}
+        </p>
+      </div>
+
+      {/* Tarjeta 2: barras por zona */}
+      <div className="rounded-xl border p-6 bg-card/60 space-y-4">
+        <h4 className="font-semibold">Áreas evaluadas</h4>
+        <StatBar label="Ojos" value={scores.eyes} />
+        <StatBar label="Boca" value={scores.mouth} />
+        <StatBar label="Mandíbula" value={scores.jaw} />
+
+        {/* tips simples basados en el peor valor */}
+        {(() => {
+          const items = [
+            { k: "Ojos", v: scores.eyes, tip: "Mantén la cabeza recta al tomar la foto para reducir inclinación." },
+            { k: "Boca", v: scores.mouth, tip: "Relaja los labios y evita sonreír ampliamente para medir mejor." },
+            { k: "Mandíbula", v: scores.jaw, tip: "Procura iluminación frontal para evitar sombras laterales." },
+          ];
+          const worst = items.sort((a, b) => b.v - a.v)[2];
+          return (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Sugerencia rápida ({worst.k}): {worst.tip}
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  ) : (
+    <div className="rounded-xl border p-6 bg-card/60 text-sm text-muted-foreground">
+      Sube una imagen o enciende la cámara para ver tu análisis.
+    </div>
+  )}
+</div>
+
 
       <div className="flex gap-2">
         <button
