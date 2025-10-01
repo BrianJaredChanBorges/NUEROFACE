@@ -106,7 +106,34 @@ export const Navbar = () => {
       {/* <!-- Desktop --> */}
       <NavigationMenu className="hidden lg:block mx-auto">
         <NavigationMenuList>
-          <NavigationMenuItem>
+          
+
+          {/* Un Item por cada Link y sin next/link aquí para anchors */}
+          {routeList.map(({ href, label }) => (
+            <NavigationMenuItem key={href}>
+              <NavigationMenuLink href={href} className="text-base px-2">
+                {label}
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          ))}
+        </NavigationMenuList>
+
+        {/* ✅ Viewport directo bajo Root */}
+        <NavigationMenuViewport />
+      </NavigationMenu>
+
+      <div className="hidden lg:flex">
+        <ToggleTheme />
+        <Button asChild size="sm" variant="ghost" aria-label="View on GitHub">
+          <Link aria-label="View on GitHub" href="" target="_blank">
+            <Github className="size-5" />
+          </Link>
+        </Button>
+      </div>
+    </header>
+  );
+};
+/* <NavigationMenuItem>
             <NavigationMenuTrigger className="bg-card text-base">
               Features
             </NavigationMenuTrigger>
@@ -136,30 +163,4 @@ export const Navbar = () => {
                 </ul>
               </div>
             </NavigationMenuContent>
-          </NavigationMenuItem>
-
-          {/* Un Item por cada Link y sin next/link aquí para anchors */}
-          {routeList.map(({ href, label }) => (
-            <NavigationMenuItem key={href}>
-              <NavigationMenuLink href={href} className="text-base px-2">
-                {label}
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-          ))}
-        </NavigationMenuList>
-
-        {/* ✅ Viewport directo bajo Root */}
-        <NavigationMenuViewport />
-      </NavigationMenu>
-
-      <div className="hidden lg:flex">
-        <ToggleTheme />
-        <Button asChild size="sm" variant="ghost" aria-label="View on GitHub">
-          <Link aria-label="View on GitHub" href="" target="_blank">
-            <Github className="size-5" />
-          </Link>
-        </Button>
-      </div>
-    </header>
-  );
-};
+          </NavigationMenuItem>*/
