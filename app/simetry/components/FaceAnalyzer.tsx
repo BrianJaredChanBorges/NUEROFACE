@@ -6,7 +6,18 @@ import Uploader, { UploaderProps } from "./Uploader";
 
 
 type Landmark = { x: number; y: number; z?: number };
-type Scores = { global: number; eyes: number; mouth: number; jaw: number; framesProcessed?: number };
+type Scores = {
+  global: number;
+  eyes: number;
+  mouth: number;
+  jaw: number;
+  framesProcessed?: number;
+  meta?: {
+    rollDeg: number;   // grados de inclinación detectados
+    rollOk: boolean;   // true si |roll| <= 5°
+  };
+};
+
 // 1) En la definición del componente, añade las props:
 type FaceAnalyzerProps = {
   className?: string;
@@ -17,6 +28,134 @@ type FaceAnalyzerProps = {
 let FilesetResolver: any = null;
 let FaceLandmarkerClass: any = null;
 let DrawingUtilsClass: any = null;
+
+
+// ====== Utils de precisión (simetría geométrica + corrección de roll) ======
+type XYZ = { x: number; y: number; z?: number };
+
+// Indices de FaceMesh más estables (MediaPipe) para puntos clínicos
+// (Si tu build cambia indices, ajusta aquí sin tocar lo demás)
+const IDX = {
+  eyeOuterL: 33,     // comisura externa ojo izq (puede invertirse según espejo)
+  eyeOuterR: 263,    // comisura externa ojo der
+  eyeInnerL: 133,
+  eyeInnerR: 362,
+  mouthCornerL: 61,  // comisura labial izq
+  mouthCornerR: 291, // comisura labial der
+  jawL: 172,         // mandíbula izq aprox
+  jawR: 397,         // mandíbula der aprox
+  noseTip: 1,        // punta nasal
+  noseBaseL: 98,     // ala nasal izq
+  noseBaseR: 327,    // ala nasal der
+};
+
+// Utilidades geométricas
+const v = {
+  sub: (a: XYZ, b: XYZ) => ({ x: a.x - b.x, y: a.y - b.y }),
+  add: (a: XYZ, b: XYZ) => ({ x: a.x + b.x, y: a.y + b.y }),
+  mul: (a: XYZ, k: number) => ({ x: a.x * k, y: a.y * k }),
+  dot: (a: XYZ, b: XYZ) => a.x * b.x + a.y * b.y,
+  len: (a: XYZ) => Math.hypot(a.x, a.y),
+  mid: (a: XYZ, b: XYZ) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }),
+};
+
+function toRad(deg: number) { return (deg * Math.PI) / 180; }
+function toDeg(rad: number) { return (rad * 180) / Math.PI; }
+
+// Rota en 2D alrededor de "c" (para quitar roll)
+function rotateAround(p: XYZ, c: XYZ, deg: number): XYZ {
+  const r = toRad(deg);
+  const s = Math.sin(r), ccos = Math.cos(r);
+  const t = v.sub(p, c);
+  return { x: t.x * ccos - t.y * s + c.x, y: t.x * s + t.y * ccos + c.y };
+}
+
+// Obtiene punto seguro (si no existe, vuelve al 0)
+function P(ls: XYZ[], i: number): XYZ {
+  return ls[i] ?? { x: 0, y: 0, z: 0 };
+}
+
+// Normaliza landmarks quitando roll (inclinación) usando línea de ojos
+function deroll(landmarks: XYZ[]) {
+  const L = P(landmarks, IDX.eyeOuterL);
+  const R = P(landmarks, IDX.eyeOuterR);
+  const center = v.mid(L, R);
+  const angle = toDeg(Math.atan2(R.y - L.y, R.x - L.x)); // 0° = horizontal
+  // Si la línea de ojos sube a la derecha, angle > 0 → rotamos -angle
+  const corrected = landmarks.map((p) => rotateAround(p, center, -angle));
+  return { corrected, rollDeg: angle };
+}
+
+// Métrica 0–100 a partir de diferencia absoluta respecto al eje medio
+function pairScore(a: XYZ, b: XYZ, midX: number, ref: number) {
+  // Si el promedio de |(a.x - d)| y |(b.x - d)| es pequeño → más simétrico
+  const da = Math.abs(a.x - midX);
+  const db = Math.abs(b.x - midX);
+  const diff = Math.abs(da - db);            // diferencia de distancias al eje
+  const norm = Math.min(diff / ref, 1);      // 0 = perfecto, 1 = muy asimétrico
+  return 100 * (1 - norm);
+}
+
+// Calcula puntajes por zona + global (simple y estable)
+export function computeSymmetryEnhanced(landmarks: XYZ[]) {
+  // 1) Quitar roll (inclinación) con la línea de ojos
+  const { corrected, rollDeg } = deroll(landmarks);
+
+  // Referencias y eje medio
+  const L = P(corrected, IDX.eyeOuterL);
+  const R = P(corrected, IDX.eyeOuterR);
+  const mid = v.mid(L, R);
+  const ref = Math.max(0.04, v.len(v.sub(R, L))); // distancia interpupilar (coords normalizadas 0..1)
+
+  // --- Simetría "en X" (como antes) ---
+  const eyesX  = pairScore(P(corrected, IDX.eyeInnerL),  P(corrected, IDX.eyeInnerR),  mid.x, ref);
+  const mouthX = pairScore(P(corrected, IDX.mouthCornerL), P(corrected, IDX.mouthCornerR), mid.x, ref);
+  const jawX   = pairScore(P(corrected, IDX.jawL),         P(corrected, IDX.jawR),        mid.x, ref);
+  const noseX  = pairScore(P(corrected, IDX.noseBaseL),    P(corrected, IDX.noseBaseR),   mid.x, ref);
+
+  // --- NUEVOS cues anti-sesgo (vertical/ángulo) ---
+  // Apertura de ojos (párpado inferior - superior)
+  const LE_up = P(corrected, 159), LE_down = P(corrected, 145); // ojo izq
+  const RE_up = P(corrected, 386), RE_down = P(corrected, 374); // ojo der
+  const aperL = Math.max(LE_down.y - LE_up.y, 0);
+  const aperR = Math.max(RE_down.y - RE_up.y, 0);
+  const ratioDiff = Math.abs(aperL - aperR) / Math.max(Math.max(aperL, aperR), 1e-6);
+  const eyesApert = 100 * (1 - Math.min(ratioDiff, 1)); // 100 = aperturas iguales
+
+  // Desnivel vertical entre comisuras de la boca
+  const mouthL = P(corrected, IDX.mouthCornerL);
+  const mouthR = P(corrected, IDX.mouthCornerR);
+  const mouthVertDiff = Math.abs(mouthL.y - mouthR.y);
+  const mouthVert = 100 * (1 - Math.min(mouthVertDiff / ref, 1)); // 100 = misma altura
+
+  // Ángulo de la línea de la boca (0° ideal tras deroll)
+  const angDeg = Math.abs((Math.atan2(mouthR.y - mouthL.y, mouthR.x - mouthL.x) * 180) / Math.PI);
+  const angleLimit = 12; // a 12° penalización completa
+  const mouthAngle = 100 * (1 - Math.min(angDeg / angleLimit, 1));
+
+  // --- Combinar por zonas ---
+  const eyesScore  = eyesX * 0.5 + eyesApert * 0.5;
+  const mouthScore = mouthX * 0.4 + mouthVert * 0.4 + mouthAngle * 0.2;
+  const jawScore   = jawX;
+  const noseScore  = noseX;
+
+  // --- Global con “ancla” en las señales críticas ---
+  let global = eyesScore * 0.32 + mouthScore * 0.38 + jawScore * 0.18 + noseScore * 0.12;
+
+  // Evitar 99% con caída evidente: limita por las señales más débiles
+  const criticalMin = Math.min(eyesApert, mouthVert, mouthAngle);
+  global = Math.min(global, criticalMin * 0.6 + global * 0.4);
+
+  return {
+    global: +global.toFixed(1),
+    eyes: +eyesScore.toFixed(1),
+    mouth: +mouthScore.toFixed(1),
+    jaw: +jawScore.toFixed(1),
+    nose: +noseScore.toFixed(1),
+    quality: { rollDeg: +rollDeg.toFixed(1), rollOk: Math.abs(rollDeg) <= 5 },
+  };
+}
+
 
 // ---------- UI helpers (solo presentación) ----------
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -131,8 +270,8 @@ export default function FaceAnalyzer({
 // Si no tienes ese efecto, crea este (sin duplicar inicializaciones):
 
 
-        const fileset = await FilesetResolver.forVisionTasks(WASM_ROOT);
-
+        const fileset = await FilesetResolver.forVisionTasks(WASM_ROOT); 
+        
         landmarkerRef.current = await FaceLandmarkerClass.createFromOptions(fileset, {
           baseOptions: { modelAssetPath: MODEL_PATH },
           runningMode: "VIDEO",
@@ -153,7 +292,7 @@ export default function FaceAnalyzer({
         );
       }
     })();
-
+ 
       return () => {
       // cleanup asíncrono seguro
       (async () => {
@@ -255,16 +394,22 @@ export default function FaceAnalyzer({
             drawPoints(results.faceLandmarks[0]);
           }
 
-          const pj = normalizeLandmarks2D(results.faceLandmarks[0], video.videoWidth, video.videoHeight);
-          frameBufferRef.current.push(pj.flat());
-          if (frameBufferRef.current.length > 80) frameBufferRef.current.shift();
+        // Cálculo mejorado directamente desde los landmarks (más preciso al corregir roll)
+const enh = computeSymmetryEnhanced(results.faceLandmarks[0] as any);
 
-          if (frameBufferRef.current.length % 8 === 0) {
-            const avg = averageFrame(frameBufferRef.current);
-            const sc: Scores = computeAsymmetryScores(avg);
-            sc.framesProcessed = frameBufferRef.current.length;
-            setScores(sc);
-          }
+// Si quieres mantener un poquito de suavizado temporal, mezclamos 20% con el valor previo
+setScores((prev: any) => {
+  const blend = (a: number, b: number) => (prev ? a * 0.8 + b * 0.2 : a);
+  return {
+    global: +blend(enh.global, prev?.global ?? enh.global).toFixed(1),
+    eyes:   +blend(enh.eyes,   prev?.eyes   ?? enh.eyes).toFixed(1),
+    mouth:  +blend(enh.mouth,  prev?.mouth  ?? enh.mouth).toFixed(1),
+    jaw:    +blend(enh.jaw,    prev?.jaw    ?? enh.jaw).toFixed(1),
+    framesProcessed: (prev?.framesProcessed ?? 0) + 1,
+    meta: { rollDeg: enh.quality.rollDeg, rollOk: enh.quality.rollOk },
+  };
+});
+
         } else {
           const ctx = canvas.getContext("2d");
           if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -309,10 +454,16 @@ async function handleFiles(files: File[]) {
       const res = await landmarkerRef.current.detect(img);
       if (res?.faceLandmarks?.[0]) {
         drawStaticImageWithLandmarks(img, res.faceLandmarks[0]);
-        const pts = normalizeLandmarks2D(res.faceLandmarks[0], img.width, img.height);
-        const sc: Scores = computeAsymmetryScores(pts.flat());
-        sc.framesProcessed = 1;
-        setScores(sc);
+       const enh = computeSymmetryEnhanced(res.faceLandmarks[0] as any);
+setScores({
+  global: enh.global,
+  eyes: enh.eyes,
+  mouth: enh.mouth,
+  jaw: enh.jaw,
+  framesProcessed: 1,
+  meta: { rollDeg: enh.quality.rollDeg, rollOk: enh.quality.rollOk },
+});
+
       } else {
         clearCanvas();
         setScores(null);
@@ -528,6 +679,7 @@ async function handleFiles(files: File[]) {
   )}
 
   {scores ? (
+    
     <div className="grid gap-6 md:grid-cols-2">
       {/* Tarjeta 1: Gauge + badge */}
       <div className="rounded-xl border p-6 bg-card/60">

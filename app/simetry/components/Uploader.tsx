@@ -117,12 +117,12 @@ const Uploader: React.FC<UploaderProps> = ({
     >
       {/* Zona de drop / click */}
       <FileUpload.Dropzone className="h-40 w-full rounded-lg border-2 border-dashed flex items-center justify-center text-sm text-muted-foreground">
-        Arrastra y suelta aquí, o haz clic para seleccionar
+        Arrastra y suelta aquí la imagen, o haz clic para seleccionar
       </FileUpload.Dropzone>
 
       {/* Disparador opcional (botón) */}
       <FileUpload.Trigger asChild>
-        <Button variant="secondary">Elegir archivos</Button>
+        <Button variant="secondary">Sube una foto</Button>
       </FileUpload.Trigger>
 
       {/* Lista de archivos -> usa el hook dentro del provider */}
@@ -130,7 +130,7 @@ const Uploader: React.FC<UploaderProps> = ({
 
       {/* Limpiar todo */}
       <FileUpload.Clear asChild forceMount>
-        <Button variant="outline">Limpiar lista</Button>
+        <Button variant="outline">Eliminar foto</Button>
       </FileUpload.Clear>
     </FileUpload.Root>
   );
