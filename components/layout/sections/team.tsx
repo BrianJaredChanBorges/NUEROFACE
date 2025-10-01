@@ -63,13 +63,13 @@ export const TeamSection = () => {
     ],
   },
   {
-    imageUrl: "/team/Pedro.jpg",
-    firstName: "Pedro",
-    lastName: "Robinson",
+    imageUrl: "/team/Azeneth.jpg",
+    firstName: "Azeneth",
+    lastName: "Gil",
     positions: [
-      "Ing. Mecatronica",
-      "Cloud Native Developer",
-      "Kubernetes Orchestrator",
+      "Lic. Contadora Publica",
+      "Experta en administracion financiera",
+      "Consultora",
     ],
     socialNetworks: [
       { name: "LinkedIn", url: "" },
