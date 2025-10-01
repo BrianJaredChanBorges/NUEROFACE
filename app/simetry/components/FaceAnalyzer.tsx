@@ -284,9 +284,9 @@ export default function FaceAnalyzer({
 }: FaceAnalyzerProps) {
   const [clinicalMode, setClinicalMode] = useState(false);
  
-
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  
   const [ready, setReady] = useState(false);
   const landmarkerRef = useRef<any | null>(null);
   const [scores, setScores] = useState<Scores | null>(null);
@@ -398,97 +398,6 @@ export default function FaceAnalyzer({
     }
   }
 
-  // --- Helpers de canvas para modo clínico ---
-function px(canvas: HTMLCanvasElement, nx: number) { return nx * canvas.width; }
-function py(canvas: HTMLCanvasElement, ny: number) { return ny * canvas.height; }
-
-/**
- * Dibuja guías clínicas sobre el canvas:
- * - Eje medio facial (rojo)
- * - Línea de comisuras de la boca (naranja)
- * - Aperturas de ambos ojos (azul)
- * - Distancia ceja-ojo en ambos lados (morado)
- * - Región dental aproximada (verde)
- */
-function drawClinicalGuides(
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  ls: Landmark[]
-) {
-  if (!ls?.length) return;
-
-  ctx.save();
-  ctx.lineWidth = 2;
-
-  // 1) Eje medio entre ojos externos (rojo)
-  const L = ls[33], R = ls[263];
-  if (L && R) {
-    const midx = (L.x + R.x) / 2;
-    ctx.strokeStyle = "rgba(255,80,80,0.9)";
-    ctx.beginPath();
-    ctx.moveTo(px(canvas, midx), 0);
-    ctx.lineTo(px(canvas, midx), canvas.height);
-    ctx.stroke();
-  }
-
-  // 2) Línea de comisuras (naranja)
-  const ML = ls[61], MR = ls[291];
-  if (ML && MR) {
-    ctx.strokeStyle = "rgba(255,160,50,0.95)";
-    ctx.beginPath();
-    ctx.moveTo(px(canvas, ML.x), py(canvas, ML.y));
-    ctx.lineTo(px(canvas, MR.x), py(canvas, MR.y));
-    ctx.stroke();
-  }
-
-  // 3) Aperturas de ojos (azul)  (sup, inf): izq (159,145), der (386,374)
-  const pairs: Array<[number, number]> = [[159,145],[386,374]];
-  ctx.strokeStyle = "rgba(80,160,255,0.95)";
-  for (const [up, down] of pairs) {
-    const U = ls[up], D = ls[down];
-    if (U && D) {
-      ctx.beginPath();
-      ctx.moveTo(px(canvas, U.x), py(canvas, U.y));
-      ctx.lineTo(px(canvas, D.x), py(canvas, D.y));
-      ctx.stroke();
-    }
-  }
-
-  // 4) Distancia ceja-ojo (morado): ápices 105 (izq) y 334 (der)
-  const eyeLC = (ls[33] && ls[133] && ls[159] && ls[145])
-    ? { x:(ls[33].x+ls[133].x+ls[159].x+ls[145].x)/4, y:(ls[33].y+ls[133].y+ls[159].y+ls[145].y)/4 }
-    : null;
-  const eyeRC = (ls[362] && ls[263] && ls[386] && ls[374])
-    ? { x:(ls[362].x+ls[263].x+ls[386].x+ls[374].x)/4, y:(ls[362].y+ls[263].y+ls[386].y+ls[374].y)/4 }
-    : null;
-  const browL = ls[105], browR = ls[334];
-  ctx.strokeStyle = "rgba(180,90,255,0.9)";
-  if (browL && eyeLC) {
-    ctx.beginPath();
-    ctx.moveTo(px(canvas, browL.x), py(canvas, browL.y));
-    ctx.lineTo(px(canvas, eyeLC.x), py(canvas, eyeLC.y));
-    ctx.stroke();
-  }
-  if (browR && eyeRC) {
-    ctx.beginPath();
-    ctx.moveTo(px(canvas, browR.x), py(canvas, browR.y));
-    ctx.lineTo(px(canvas, eyeRC.x), py(canvas, eyeRC.y));
-    ctx.stroke();
-  }
-
-  // 5) Región dental aproximada (verde): rectángulo entre comisuras y labio sup/inf (13,14)
-  const upper = ls[13], lower = ls[14];
-  if (ML && MR && upper && lower) {
-    const x1 = px(canvas, Math.min(ML.x, MR.x));
-    const x2 = px(canvas, Math.max(ML.x, MR.x));
-    const y1 = py(canvas, upper.y);
-    const y2 = py(canvas, lower.y);
-    ctx.strokeStyle = "rgba(60,200,120,0.9)";
-    ctx.strokeRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1));
-  }
-
-  ctx.restore();
-}
 
   function stopCamera() {
     if (streamRef.current) {
@@ -652,27 +561,98 @@ setScores({
     setProcessing(false);
   }
 }
+ 
+function drawPoints(landmarks: Landmark[]) {
+  const canvas = canvasRef.current;
+  const video = videoRef.current;
+  if (!canvas || !video) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
 
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.strokeStyle = "rgba(0,120,255,0.9)";
+  ctx.lineWidth = 1;
 
-  function drawPoints(landmarks: Landmark[]) {
-    function px(canvas: HTMLCanvasElement, nx: number) { return nx * canvas.width; }
+  for (const p of landmarks) {
+    const x = p.x * canvas.width;
+    const y = p.y * canvas.height;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // 👇 Solo una vez, al final
+  if (clinicalMode) {
+    drawClinicalGuides(ctx, canvas, landmarks);
+  }
+}
+
+  function drawStaticImageWithLandmarks(img: HTMLImageElement, landmarks: Landmark[]) {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.strokeStyle = "rgba(0,200,120,0.95)";
+  ctx.lineWidth = 1;
+
+  for (const p of landmarks) {
+    const x = p.x * canvas.width;
+    const y = p.y * canvas.height;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // 👇 fuera del bucle
+  if (clinicalMode) {
+    drawClinicalGuides(ctx, canvas, landmarks);
+  }
+}
+  
+  
+
+   function clearCanvas() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  // --- Helpers de canvas (nivel archivo; NO dentro de otra función) ---
+function px(canvas: HTMLCanvasElement, nx: number) { return nx * canvas.width; }
 function py(canvas: HTMLCanvasElement, ny: number) { return ny * canvas.height; }
 
-function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, ls: Landmark[]) {
-  // Eje medio (entre ojos externos)
-  const L = ls[33], R = ls[263];
-  if (!L || !R) return;
-  const midx = (L.x + R.x) / 2;
+/** Guías clínicas sobre el canvas */
+function drawClinicalGuides(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
+  ls: Landmark[]
+) {
+  if (!ls?.length) return;
 
   ctx.save();
   ctx.lineWidth = 2;
 
   // 1) Eje medio (rojo)
-  ctx.strokeStyle = "rgba(255,80,80,0.9)";
-  ctx.beginPath();
-  ctx.moveTo(px(canvas, midx), 0);
-  ctx.lineTo(px(canvas, midx), canvas.height);
-  ctx.stroke();
+  const L = ls[33], R = ls[263];
+  if (L && R) {
+    const midx = (L.x + R.x) / 2;
+    ctx.strokeStyle = "rgba(255,80,80,0.9)";
+    ctx.beginPath();
+    ctx.moveTo(px(canvas, midx), 0);
+    ctx.lineTo(px(canvas, midx), canvas.height);
+    ctx.stroke();
+  }
 
   // 2) Línea de boca (naranja)
   const ML = ls[61], MR = ls[291];
@@ -684,10 +664,9 @@ function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEle
     ctx.stroke();
   }
 
-  // 3) Aperturas de ojos (azul)
-  const pairs = [[159,145],[386,374]] as const; // (sup, inf) left/right
+  // 3) Aperturas de ojos (azul)  sup/inf: izq (159,145) der (386,374)
   ctx.strokeStyle = "rgba(80,160,255,0.95)";
-  for (const [up, down] of pairs) {
+  for (const [up, down] of [[159,145],[386,374]] as const) {
     const U = ls[up], D = ls[down];
     if (U && D) {
       ctx.beginPath();
@@ -697,29 +676,17 @@ function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEle
     }
   }
 
-  // 4) Cejas: línea vertical hasta centro de ojo (morado)
-  const browIdx = [105, 334]; // ápices aprox
-  const eyeCenters = [
-    [(33+133+159+145)/4, (33+133+159+145)/4], // solo marcador; no se usa directamente
-  ];
-  ctx.strokeStyle = "rgba(180,90,255,0.9)";
-  const eyeLC = { x:(ls[33].x+ls[133].x+ls[159].x+ls[145].x)/4, y:(ls[33].y+ls[133].y+ls[159].y+ls[145].y)/4 };
-  const eyeRC = { x:(ls[362].x+ls[263].x+ls[386].x+ls[374].x)/4, y:(ls[362].y+ls[263].y+ls[386].y+ls[374].y)/4 };
+  // 4) Cejas a centro de ojo (morado)
+  const eyeLC = (ls[33] && ls[133] && ls[159] && ls[145])
+    ? { x:(ls[33].x+ls[133].x+ls[159].x+ls[145].x)/4, y:(ls[33].y+ls[133].y+ls[159].y+ls[145].y)/4 } : null;
+  const eyeRC = (ls[362] && ls[263] && ls[386] && ls[374])
+    ? { x:(ls[362].x+ls[263].x+ls[386].x+ls[374].x)/4, y:(ls[362].y+ls[263].y+ls[386].y+ls[374].y)/4 } : null;
   const browL = ls[105], browR = ls[334];
-  if (browL) {
-    ctx.beginPath();
-    ctx.moveTo(px(canvas, browL.x), py(canvas, browL.y));
-    ctx.lineTo(px(canvas, eyeLC.x), py(canvas, eyeLC.y));
-    ctx.stroke();
-  }
-  if (browR) {
-    ctx.beginPath();
-    ctx.moveTo(px(canvas, browR.x), py(canvas, browR.y));
-    ctx.lineTo(px(canvas, eyeRC.x), py(canvas, eyeRC.y));
-    ctx.stroke();
-  }
+  ctx.strokeStyle = "rgba(180,90,255,0.9)";
+  if (browL && eyeLC) { ctx.beginPath(); ctx.moveTo(px(canvas, browL.x), py(canvas, browL.y)); ctx.lineTo(px(canvas, eyeLC.x), py(canvas, eyeLC.y)); ctx.stroke(); }
+  if (browR && eyeRC) { ctx.beginPath(); ctx.moveTo(px(canvas, browR.x), py(canvas, browR.y)); ctx.lineTo(px(canvas, eyeRC.x), py(canvas, eyeRC.y)); ctx.stroke(); }
 
-  // 5) Región dental (verde): rectángulo aproximado
+  // 5) Región dental (verde) usando labio sup/inf (13,14)
   const upper = ls[13], lower = ls[14];
   if (ML && MR && upper && lower) {
     const x1 = px(canvas, Math.min(ML.x, MR.x));
@@ -732,61 +699,6 @@ function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEle
 
   ctx.restore();
 }
-
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    if (!canvas || !video) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.strokeStyle = "rgba(0,120,255,0.9)";
-    ctx.lineWidth = 1;
-    for (const p of landmarks) {
-      const x = p.x * canvas.width;
-      const y = p.y * canvas.height;
-      ctx.beginPath();
-      ctx.arc(x, y, 1.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-  }
-
-  function drawStaticImageWithLandmarks(img: HTMLImageElement, landmarks: Landmark[]) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.strokeStyle = "rgba(0,200,120,0.95)";
-    ctx.lineWidth = 1;
-    for (const p of landmarks) {
-      const x = p.x * canvas.width;
-      const y = p.y * canvas.height;
-      ctx.beginPath();
-      ctx.arc(x, y, 1.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      if (clinicalMode) {
-  drawClinicalGuides(ctx, canvas, landmarks as any);
-}
-
-  }
-
-  
-  }
-
-  function clearCanvas() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
 
   function fileToImage(file: File): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
