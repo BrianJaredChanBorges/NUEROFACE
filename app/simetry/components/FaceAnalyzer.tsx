@@ -477,8 +477,10 @@ setScores((prev: any) => {
     jaw:    +blend(enh.jaw,    prev?.jaw    ?? enh.jaw).toFixed(1),
     framesProcessed: (prev?.framesProcessed ?? 0) + 1,
     meta: { rollDeg: enh.quality.rollDeg, rollOk: enh.quality.rollOk },
+    clinical: enh.clinical, // 👈 ¡IMPORTANTE!
   };
 });
+
 
         } else {
           const ctx = canvas.getContext("2d");
@@ -533,7 +535,9 @@ setScores({
   jaw: enh.jaw,
   framesProcessed: 1,
   meta: { rollDeg: enh.quality.rollDeg, rollOk: enh.quality.rollOk },
+  clinical: enh.clinical, // 👈 ¡IMPORTANTE!
 });
+
 
       } else {
         clearCanvas();
