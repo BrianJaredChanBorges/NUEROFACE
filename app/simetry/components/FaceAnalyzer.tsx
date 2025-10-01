@@ -775,7 +775,9 @@ function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEle
   drawClinicalGuides(ctx, canvas, landmarks as any);
 }
 
-    }
+  }
+
+  
   }
 
   function clearCanvas() {

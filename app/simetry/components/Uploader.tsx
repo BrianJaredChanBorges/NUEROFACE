@@ -133,6 +133,7 @@ const Uploader: React.FC<UploaderProps> = ({
         <Button variant="outline">Eliminar foto</Button>
       </FileUpload.Clear>
     </FileUpload.Root>
+    
   );
 };
 
