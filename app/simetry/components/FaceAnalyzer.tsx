@@ -916,7 +916,7 @@ function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEle
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full rounded pointer-events-none" />
       </div>
 
-      {/* ----- RESULTADOS VISUALES ----- */}
+{/* ----- RESULTADOS VISUALES ----- */}
 <div className="relative">
   {/* Overlay de procesamiento */}
   {processing && (
@@ -929,7 +929,6 @@ function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEle
   )}
 
   {scores ? (
-    
     <div className="grid gap-6 md:grid-cols-2">
       {/* Tarjeta 1: Gauge + badge */}
       <div className="rounded-xl border p-6 bg-card/60">
@@ -944,32 +943,6 @@ function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEle
             );
           })()}
         </div>
-
-
-        {clinicalMode && scores?.clinical && (
-  <div className="md:col-span-2 rounded-xl border p-6 bg-card/60 mt-2">
-    <h4 className="font-semibold mb-3">Modo clínico</h4>
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-      <div><span className="text-muted-foreground">Apertura ojo izq:</span> {scores.clinical.eyesApertL}</div>
-      <div><span className="text-muted-foreground">Apertura ojo der:</span> {scores.clinical.eyesApertR}</div>
-      <div><span className="text-muted-foreground">Δ aperturas ojos:</span> {scores.clinical.eyesApertDiff}</div>
-
-      <div><span className="text-muted-foreground">Desnivel comisuras (norm):</span> {scores.clinical.mouthVertDiff}</div>
-      <div><span className="text-muted-foreground">Ángulo de boca:</span> {scores.clinical.mouthAngleDeg}°</div>
-
-      <div><span className="text-muted-foreground">Ceja-ojo izq (norm):</span> {scores.clinical.browEyeDistL}</div>
-      <div><span className="text-muted-foreground">Ceja-ojo der (norm):</span> {scores.clinical.browEyeDistR}</div>
-      <div><span className="text-muted-foreground">Asimetría cejas (norm):</span> {scores.clinical.browAsym}</div>
-
-      <div className={scores.clinical.smileLikely ? "text-emerald-400" : "text-muted-foreground"}>
-        Área dental (proxy): {scores.clinical.dentalProxy} {scores.clinical.smileLikely ? "— sonrisa detectada" : ""}
-      </div>
-    </div>
-    <p className="mt-3 text-xs text-muted-foreground">
-      * Valores “norm” están normalizados por la distancia interpupilar. Los trazos clínicos se dibujan sobre la imagen cuando el modo está activo.
-    </p>
-  </div>
-)}
 
         <p className="mt-4 text-xs text-muted-foreground">
           Frames analizados: {scores.framesProcessed ?? 0}
@@ -998,6 +971,58 @@ function drawClinicalGuides(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasEle
           );
         })()}
       </div>
+
+      {/* ▸ Panel clínico (una sola vez, debajo, abarcando 2 columnas) */}
+      {clinicalMode && scores?.clinical && (
+        <div className="md:col-span-2 rounded-xl border p-6 bg-card/60 mt-2">
+          <div className="flex items-start justify-between gap-4">
+            <h4 className="font-semibold">Modo clínico</h4>
+
+            {/* Alertas rápidas */}
+            <div className="flex flex-wrap gap-2 text-xs">
+              {!scores.meta?.rollOk && (
+                <span className="border rounded-full px-2 py-0.5 text-amber-300 border-amber-500/40">
+                  Cabeza inclinada {scores.meta?.rollDeg}°
+                </span>
+              )}
+              {scores.clinical.smileLikely && (
+                <span className="border rounded-full px-2 py-0.5 text-emerald-300 border-emerald-500/40">
+                  Sonrisa detectada (área dental activa)
+                </span>
+              )}
+              {scores.clinical.browAsym > 0.05 && (
+                <span className="border rounded-full px-2 py-0.5 text-fuchsia-300 border-fuchsia-500/40">
+                  Ceño / elevación de ceja (asimetría)
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Métricas en rejilla */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3 text-sm">
+            {/* Ojos */}
+            <div><span className="text-muted-foreground">Apertura ojo izq:</span> {scores.clinical.eyesApertL}</div>
+            <div><span className="text-muted-foreground">Apertura ojo der:</span> {scores.clinical.eyesApertR}</div>
+            <div><span className="text-muted-foreground">Δ aperturas ojos:</span> {scores.clinical.eyesApertDiff}</div>
+
+            {/* Boca */}
+            <div><span className="text-muted-foreground">Ángulo de boca:</span> {scores.clinical.mouthAngleDeg}°</div>
+            <div><span className="text-muted-foreground">Desnivel comisuras (norm):</span> {scores.clinical.mouthVertDiff}</div>
+            <div className={scores.clinical.smileLikely ? "text-emerald-300" : "text-muted-foreground"}>
+              Área dental (proxy): {scores.clinical.dentalProxy} {scores.clinical.smileLikely ? "— sonrisa" : ""}
+            </div>
+
+            {/* Cejas */}
+            <div><span className="text-muted-foreground">Ceja-ojo izq (norm):</span> {scores.clinical.browEyeDistL}</div>
+            <div><span className="text-muted-foreground">Ceja-ojo der (norm):</span> {scores.clinical.browEyeDistR}</div>
+            <div><span className="text-muted-foreground">Asimetría cejas (norm):</span> {scores.clinical.browAsym}</div>
+          </div>
+
+          <p className="mt-3 text-xs text-muted-foreground">
+            * “norm” = normalizado por distancia interpupilar. Con Modo clínico ON verás las guías (eje medio, línea de boca, aperturas, ceja-ojo y región dental) sobre la imagen.
+          </p>
+        </div>
+      )}
     </div>
   ) : (
     <div className="rounded-xl border p-6 bg-card/60 text-sm text-muted-foreground">
